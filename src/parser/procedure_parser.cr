@@ -15,8 +15,12 @@ module ProcedureParser
     return parse_if_statement  if match?(TokenType::IF)
     return parse_while_loop    if match?(TokenType::WHILE)
     return parse_function_declaration if match?(TokenType::FN)
-    return parse_procedure_declaration if match?(TokenType::PROC)
     return parse_struct_declaration if match?(TokenType::STRUCT)
+
+    # special handle syntactic sugar making 'proc' before main optional
+    if match?(TokenType::PROC) || peek.lexeme == "main"
+      return parse_procedure_declaration
+    end
     
     return Break.new if match?(TokenType::BREAK) && match?(TokenType::SEMICOLON)
     return Return.new if match?(TokenType::RETURN) && match?(TokenType::SEMICOLON)

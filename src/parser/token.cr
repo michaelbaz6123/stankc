@@ -3,10 +3,8 @@ struct Token
   property lexeme : String
   property line : Int32
   property column : Int32
+  
   def initialize(@type, @lexeme, @line, @column)
-  end
-  def to_s
-    "#{@type} '#{@lexeme}' at line #{@line}, column #{@column}"
   end
 end
 
