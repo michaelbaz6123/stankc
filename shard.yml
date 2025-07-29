@@ -1,0 +1,13 @@
+name: stankc
+version: 0.1.0
+
+authors:
+  - Michael Baz <michaelbaz6123@gmail.com>
+
+targets:
+  stank:
+    main: src/main.cr
+
+crystal: '>= 1.16.3'
+
+license: MIT
