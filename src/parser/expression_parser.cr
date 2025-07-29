@@ -27,7 +27,7 @@ module ExpressionParser
   end
 
 
-  def parse_literal : Expression
+  private def parse_literal : Expression
     token = advance
 
     literal_value = case token.type
@@ -48,7 +48,7 @@ module ExpressionParser
     when TokenType::NIL
       NilLiteral.new(nil)
     else
-      raise "Unexpected literal type: #{token.lexeme}"
+      raise error("unexpected literal type #{token.lexeme}", token)
     end
 
     return Literal.new(literal_value)
@@ -59,11 +59,11 @@ module ExpressionParser
       var_expr = left.as(VariableExpression)
       var = var_expr.variable
       if operator.type == TokenType::EQ
-        return Reassignment.new(var, right)
+        return VarReassignment.new(var, right)
       else
         binary_op_type = desugar_assign_operator(operator.type)
         binary_expr = BinaryExpression.new(var_expr, binary_op_type, right)
-        return Reassignment.new(var, binary_expr)
+        return VarReassignment.new(var, binary_expr)
       end
     else
       return BinaryExpression.new(left, operator.type, right)
@@ -91,14 +91,14 @@ module ExpressionParser
     when TokenType::L_PAREN
       advance
       expr = parse_expression
-      consume(TokenType::R_PAREN, "Expected ')' to match '('")
+      consume(TokenType::R_PAREN, "expected ')' to match '('")
       expr
     else
-      raise "Unexpected token in expression: #{peek}"
+      raise error("unexpected token in expression #{peek.lexeme}", peek)
     end
   end
 
-  def parse_identifier_expression : Expression
+  private def parse_identifier_expression : Expression
     variable = parse_variable
     if peek.type == TokenType::L_PAREN
       return parse_procedure_call(variable)
@@ -109,7 +109,7 @@ module ExpressionParser
     end
   end
   
-  def desugar_assign_operator(type : TokenType) : TokenType
+  private def desugar_assign_operator(type : TokenType) : TokenType
     token_type = DESUGARED_ASSIGN_OPERATORS[type]?
     return token_type if token_type
     return TokenType::EOF # fallback so we have some tokentype to return, should never happen
@@ -129,44 +129,57 @@ module ExpressionParser
     return FunctionCall.new(callee, args)
   end
 
-  def parse_tuple_expression : TupleExpression
+  private def parse_tuple_expression : TupleExpression
     args = [] of Expression
-    consume(TokenType::L_PAREN, "Expected '(' to begin tuple expression")
+    consume(TokenType::L_PAREN, "expected '(' to begin tuple expression")
     unless peek.type == TokenType::R_PAREN
       args << parse_expression
       while match?(TokenType::COMMA)
         args << parse_expression
       end
     end
-    consume(TokenType::R_PAREN, "Expect ')' to end tuple expression")
+    consume(TokenType::R_PAREN, "expected ')' to end tuple expression")
 
     return TupleExpression.new(args)
+  end
+
+  def parse_type : Type
+    inner_types = [] of Type
+    name = consume(TokenType::IDENTIFIER, "expected type annotation").lexeme
+    saw_open_paren = false
+    if match?(TokenType::L_PAREN) && (saw_open_paren = true)
+      inner_types << parse_type
+      while match?(TokenType::COMMA)
+        inner_types << parse_type
+      end
+    end
+    consume(TokenType::R_PAREN, "expected ')' to end type args") if saw_open_paren
+    return Type.new(name, inner_types)
   end
 
   private def parse_if_expression : IfExpression
     branches = [] of IfBranch
 
-    consume(TokenType::IF, "Expect 'if' to start if expression")
+    consume(TokenType::IF, "expected 'if' to start if expression")
     condition = parse_expression
-    consume(TokenType::THEN, "Expect 'then' after condition")
+    consume(TokenType::THEN, "expected 'then' after if condition")
     body = parse_expression
     branches << IfBranch.new(condition, body)
 
     while peek.type == TokenType::ELIF
-      consume(TokenType::ELIF)
+      advance # TokenType::ELIF
       condition = parse_expression
-      consume(TokenType::THEN, "Expect 'then' after condition")
+      consume(TokenType::THEN, "expected 'then' after elif condition")
       body = parse_expression
       branches << IfBranch.new(condition, body)
     end
 
     else_body = if peek.type == TokenType::ELSE
-      consume(TokenType::ELSE)
-      consume(TokenType::DO) if peek.type == TokenType::DO
+      advance # TokenType::ELSE
       parse_expression
     else nil end
 
-    consume(TokenType::END, "Expect 'end' to terminate if expression")
+    consume(TokenType::END, "expected 'end' to end if expression")
     
     return IfExpression.new(branches, else_body)
   end
@@ -187,7 +200,7 @@ module ExpressionParser
     BINARY_OPERATORS.includes?(token.type)
   end
 
-  def assign_operator?(token : Token) : Bool 
+  private def assign_operator?(token : Token) : Bool 
     ASSIGN_OPERATORS.includes?(token.type) 
   end
  

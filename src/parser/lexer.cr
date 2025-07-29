@@ -20,10 +20,10 @@ class Lexer
     return tokens
   end
 
-  def single_lex(c : Char) : Token
+  private def single_lex(c : Char) : Token
     case c
     when '='
-      if match?('=') 
+      if match?('=')
         new_token(TokenType::COMP_EQ, "==")
       elsif match?('>')
         new_token(TokenType::ARROW, "=>")
@@ -139,15 +139,15 @@ class Lexer
     when '\''
       char_token
     else
-      raise "Unknown character #{c}"
+      raise error("Unknown character #{c}")
     end
   end
 
-  def new_token(type : TokenType, lexeme : String) : Token
+  private def new_token(type : TokenType, lexeme : String) : Token
     Token.new(type, lexeme, @line, @column - lexeme.size)
   end
 
-  def advance : Char
+  private def advance : Char
     c = @source[@current]
     @current += 1
     if c == '\n' @line += 1; @column = 1
@@ -156,7 +156,7 @@ class Lexer
   end
 
   # Int or Float literal
-  def number_token(first_char : Char) : Token 
+  private def number_token(first_char : Char) : Token 
     start = @current - 1
     while !eof? && (peek.number? || peek == '.')
       advance
@@ -167,7 +167,7 @@ class Lexer
   end
 
   # keyword or identifier/operator token
-  def identifier_token(first_char : Char) : Token
+  private def identifier_token(first_char : Char) : Token
     start = @current - 1
     while !eof? && (peek.alphanumeric? || peek == '_')
       advance
@@ -177,45 +177,57 @@ class Lexer
     return new_token(type, lexeme)
   end
 
-  def char_token : Token
+  private def char_token : Token
     ch = peek
     advance
     if peek != '\''
-      raise "character literal cannot have more than one character"
+      raise error("character literal cannot have more than one character")
     end
     advance
     return new_token(TokenType::CHAR_LITERAL, "#{ch}")
   end
 
-  def string_token : Token
+  private def string_token : Token
     start = @current
     start_ln, start_col = @line, @column
     until eof? || peek == '"'
       advance
     end
-    raise "Unterminated string literal in program starting at #{start_ln}:#{start_col}" if eof?
+    if eof?
+      # back line/column counters to start of string for more accurate error
+      @line = start_ln; @column = start_col
+      raise error("Unterminated string literal in program")
+    end
     lexeme = @source[start...@current]
     advance
     return new_token(TokenType::STRING_LITERAL, lexeme)
   end
 
   # tries to match expected and consumes if so
-  def match?(expected : Char) : Bool
-    return !eof? && @source[@current] == expected && (@current += 1).nil?
+  private def match?(expected : Char) : Bool
+    if !eof? && @source[@current] == expected 
+      @current += 1
+      true
+    else false end
   end
 
-  def peek : Char
+  private def peek : Char
     @source[@current]
   end
 
-  def pass_whitespace
+  private def pass_whitespace
     while !eof? && [' ', '\t', '\n', '\r'].includes?(peek)
       advance
     end
   end
 
-  def eof?
+  private def eof?
     @current >= @source.size
   end
+
+  private def error(message : String) : ParseError
+    ParseError.new(message, @line, @column)
+  end
+
 end
 

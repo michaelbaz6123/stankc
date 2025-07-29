@@ -1,5 +1,6 @@
-class Type < Node
+class Type < Expression
   getter raw : String
-  def initialize(@raw : String)
+  getter inner_types : Array(Type)
+  def initialize(@raw : String, @inner_types)
   end
 end

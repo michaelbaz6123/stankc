@@ -1,8 +1,11 @@
 require "./spec_helper"
 
 def parse(source) : AST
-  tokens = Lexer.new(source).lex
-  Parser.new(tokens).parse
+  begin
+    return Parser.new(source).parse.as(AST)
+  rescue pe : ParseError
+    raise "parse failed with #{pe.message}"
+  end
 end
 
 describe Parser do
@@ -29,12 +32,12 @@ describe Parser do
       value.should be_a Literal
     end
 
-    it "parses variable assignment" do
+    it "parses variable declaration" do
       ast = parse("var x : I32 = 0;")
 
       stmt = ast.procedure.statements.first
-      stmt.should be_a Assignment
-      assignment = stmt.as(Assignment)
+      stmt.should be_a VarDeclaration
+      assignment = stmt.as(VarDeclaration)
       typed_name = assignment.typed_name
       name = typed_name.name.raw
       name.should eq("x")

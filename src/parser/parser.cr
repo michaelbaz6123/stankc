@@ -2,41 +2,42 @@ require "./expression_parser"
 require "./procedure_parser"
 require "./token"
 require "./ast/ast"
+require "./parse_error"
 
 class Parser
   include ExpressionParser
   include ProcedureParser
+  # TODO this getter is here for peeking at tokens from lexer output / debugging
+  getter tokens : Array(Token)
 
-  def initialize(@tokens : Array(Token))
+  def initialize(source : String)
+    @tokens = Lexer.new(source).lex
     @current = 0
   end
 
-  def parse : AST
+  def parse : AST | Exception
     AST.new(parse_procedure(TokenType::EOF))
   end
 
   def parse_variable : Variable
     names = [] of Name
-    names << Name.new(consume(TokenType::IDENTIFIER).lexeme)
+    names << Name.new(advance.lexeme) 
     while match?(TokenType::PERIOD)
-      names << Name.new(consume(TokenType::IDENTIFIER).lexeme)
+      names << Name.new(advance.lexeme)
     end
     return Variable.new(names)
   end
 
   def match?(type : TokenType) : Token?
-    if !eof? && peek.type == type
-      return consume(type)
-    end
-    return nil
+    advance unless eof? || peek.type != type
   end
 
-  def consume(type : TokenType, message = "INTERNAL_ERR") : Token
+  def consume(type : TokenType, message : String) : Token
     if peek.type == type
       return advance
     else
       bad_token = peek
-      raise "Parse error: #{bad_token.to_s}, #{message}"
+      raise error("unexpected #{bad_token.lexeme}, #{message}", bad_token)
     end
   end
 
@@ -57,5 +58,9 @@ class Parser
 
   def eof?
     peek.type == TokenType::EOF
+  end
+
+  def error(message, bad_token : Token) : ParseError
+    ParseError.new(message, bad_token.line, bad_token.column)
   end
 end

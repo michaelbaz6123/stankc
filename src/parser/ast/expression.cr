@@ -49,7 +49,7 @@ class IfExpression < Expression
   end
 end
 
-class Reassignment < Expression
+class VarReassignment < Expression
   getter variable : Variable
   getter value : Expression
 

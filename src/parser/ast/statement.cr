@@ -9,11 +9,11 @@ class Binding < Statement
   end
 end
 
-class Assignment < Statement
+class VarDeclaration < Statement
   getter typed_name : TypedName
-  getter value : Expression
+  getter value : Expression?
 
-  def initialize(@typed_name : TypedName, @value : Expression)
+  def initialize(@typed_name : TypedName, @value : Expression?)
   end
 end
 

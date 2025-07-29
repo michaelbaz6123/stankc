@@ -6,14 +6,14 @@ source_file = File.new("./source.stank")
 source = source_file.gets_to_end
 source_file.close
 
-puts "___________ Lexer Token Output _____________"
-lexer = Lexer.new(source)
-tokens = lexer.lex
-pp tokens
-puts
 
 puts "___________ Parser AST Output _____________"
-parser = Parser.new(tokens)
-ast = parser.parse
-pp ast
-# => VariableDeclaration @name="x" @value=5
+
+begin
+  parser = Parser.new(source)
+  ast = parser.parse
+  pp ast
+rescue parse_error : ParseError
+  puts parse_error.to_s
+  parse_error.put_backtrace
+end

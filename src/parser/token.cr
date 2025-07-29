@@ -1,9 +1,9 @@
 struct Token
   property type : TokenType
   property lexeme : String
-  property line : Int32?
-  property column : Int32?
-  def initialize(@type, @lexeme, @line = nil, @column = nil)
+  property line : Int32
+  property column : Int32
+  def initialize(@type, @lexeme, @line, @column)
   end
   def to_s
     "#{@type} '#{@lexeme}' at line #{@line}, column #{@column}"
@@ -14,10 +14,13 @@ enum TokenType
   IDENTIFIER; EOF
   SEMICOLON; COLON; COMMA; PERIOD; EQ
   LET; VAR; END
-  L_PAREN; R_PAREN; 
+  L_PAREN; R_PAREN;
+  L_BRACK; R_BRACK;
+  L_BRACE; R_BRACE;
+  L_CARROT; R_CARROT
   STRUCT; HAS
   INT_LITERAL; FLOAT_LITERAL; STRING_LITERAL; CHAR_LITERAL; NIL; TRUE; FALSE
-  #TODO add AS
+  AS; #TODO implement 'as'
   ADD; SUB; MUL; DIV; IDIV; MODULUS
   ADD_ASSIGN; SUB_ASSIGN; MUL_ASSIGN; DIV_ASSIGN; IDIV_ASSIGN
   BITWISE_AND; BITWISE_OR; BITWISE_XOR
