@@ -1,0 +1,2 @@
+class TypeError < Exception
+end

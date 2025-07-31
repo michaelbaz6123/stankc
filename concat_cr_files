@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Exit on error
+set -e
+
+# Check if directory is provided
+if [ -z "$1" ]; then
+  echo "Usage: $0 <directory>"
+  exit 1
+fi
+
+INPUT_DIR="$1"
+
+# Strip trailing slash if present
+INPUT_DIR="${INPUT_DIR%/}"
+
+# Get base name of the directory (e.g., "src" from "./src/")
+DIR_NAME=$(basename "$INPUT_DIR")
+OUTFILE="${DIR_NAME}.txt"
+
+# Empty or create the output file
+> "$OUTFILE"
+
+# Find and sort all .cr files in the specified directory
+find "$INPUT_DIR" -type f -name "*.cr" | sort | while read -r file; do
+  echo "# --- $file ---" >> "$OUTFILE"
+  cat "$file" >> "$OUTFILE"
+  echo -e "\n" >> "$OUTFILE"
+done
+
+echo "All .cr files in '$INPUT_DIR' concatenated into $OUTFILE"

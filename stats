@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Directory to analyze (default to current directory if not provided)
+DIR="${1:-.}"
+
+# Find all .cr files
+cr_files=$(find "$DIR" -type f -name "*.cr")
+
+# Check if any .cr files are found
+if [ -z "$cr_files" ]; then
+    echo "No .cr files found in $DIR"
+    exit 0
+fi
+
+echo "Analyzing Crystal (.cr) source files in: $DIR"
+echo
+
+# Initialize total line count
+total_lines=0
+file_count=0
+
+# Loop through each file and count lines
+for file in $cr_files; do
+    lines=$(wc -l < "$file")
+    echo "$file: $lines lines"
+    total_lines=$((total_lines + lines))
+    file_count=$((file_count + 1))
+done
+
+echo
+echo "Total .cr files: $file_count"
+echo "Total lines of code: $total_lines"

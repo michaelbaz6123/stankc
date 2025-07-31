@@ -3,25 +3,26 @@ struct Token
   property lexeme : String
   property line : Int32
   property column : Int32
-  
+
   def initialize(@type, @lexeme, @line, @column)
   end
 end
 
 enum TokenType
   IDENTIFIER; EOF
-  SEMICOLON; COLON; COMMA; PERIOD; EQ
+  MODULE; DEF
+  SEMICOLON; COLON; COMMA; PERIOD; EQ; QUESTION
+  DOUBLE_COLON;
   LET; VAR; END
   L_PAREN; R_PAREN;
   L_BRACK; R_BRACK;
   L_BRACE; R_BRACE;
-  L_CARROT; R_CARROT
-  STRUCT; HAS
+  TYPE; IS; HAS
   INT_LITERAL; FLOAT_LITERAL; STRING_LITERAL; CHAR_LITERAL; NIL; TRUE; FALSE
   AS; #TODO implement 'as'
   ADD; SUB; MUL; DIV; IDIV; MODULUS
   ADD_ASSIGN; SUB_ASSIGN; MUL_ASSIGN; DIV_ASSIGN; IDIV_ASSIGN
-  BITWISE_AND; BITWISE_OR; BITWISE_XOR
+  BITWISE_AND; BAR; BITWISE_XOR
   BITWISE_AND_ASSIGN; BITWISE_OR_ASSIGN; BITWISE_XOR_ASSIGN
   AND; OR; NOT
   AND_ASSIGN; OR_ASSIGN
@@ -48,8 +49,11 @@ KEYWORDS = {
   %(proc)     => TokenType::PROC,
   %(break)    => TokenType::BREAK,
   %(return)   => TokenType::RETURN,
-  %(struct)   => TokenType::STRUCT,
-  %(has)      => TokenType::HAS
+  %(has)      => TokenType::HAS,
+  %(is)       => TokenType::IS,
+  %(type)     => TokenType::TYPE,
+  %(module)   => TokenType::MODULE,
+  %(def)      => TokenType::DEF
 }
 
 ASSIGN_OPERATORS = Set {
@@ -72,7 +76,7 @@ DESUGARED_ASSIGN_OPERATORS = {
   TokenType::MUL_ASSIGN         => TokenType::MUL,
   TokenType::DIV_ASSIGN         => TokenType::DIV,
   TokenType::IDIV_ASSIGN        => TokenType::IDIV,
-  TokenType::BITWISE_OR_ASSIGN  => TokenType::BITWISE_OR,
+  TokenType::BITWISE_OR_ASSIGN  => TokenType::BAR,
   TokenType::BITWISE_AND_ASSIGN => TokenType::BITWISE_AND,
   TokenType::BITWISE_XOR_ASSIGN => TokenType::BITWISE_XOR,
   TokenType::AND_ASSIGN         => TokenType::AND,
@@ -88,7 +92,7 @@ EXPR_PRECEDENCE = {
     TokenType::ADD                => 13,
     TokenType::SUB                => 13,
     TokenType::BITWISE_AND        => 12,
-    TokenType::BITWISE_OR         => 11,
+    TokenType::BAR                => 11,
     TokenType::BITWISE_XOR        => 11,
     TokenType::COMP_LT            => 10,
     TokenType::COMP_GT            => 10,

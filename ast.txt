@@ -1,0 +1,365 @@
+# --- ./src/ast/ast.cr ---
+require "./call"
+require "./declaration"
+require "./expression"
+require "./if_branch"
+require "./literal"
+require "./name"
+require "./node"
+require "./procedure"
+require "./statement"
+require "./type"
+require "./variable"
+
+class AST < Node
+  getter procedure : Procedure
+  def initialize(@procedure : Procedure)
+  end
+end
+
+
+# --- ./src/ast/call.cr ---
+require "./expression"
+
+abstract class Call < Expression
+  getter callee : VariableIdentifier
+  getter args : Array(Expression)
+
+  def initialize(@callee : VariableIdentifier, @args : Array(Expression))
+  end
+end
+
+class ProcedureCall < Call
+end
+
+class FunctionCall < Call
+end
+
+# --- ./src/ast/declaration.cr ---
+require "./statement"
+require "./name"
+require "./type"
+
+abstract class Declaration < Statement
+end
+
+class ModuleDeclaration < Declaration
+  getter name : String
+  getter procedure : Procedure
+  def initialize(@name : String, @procedure : Procedure)
+  end
+end
+
+class Binding < Declaration
+  getter name : String
+  getter value : Expression
+  getter type_identifier : TypeIdentifier?
+  
+  getter resolved_type : Type?
+
+  def initialize(@name : String, @value : Expression, type_identifier : TypeIdentifier? = nil)
+  end
+
+end
+
+class VarDeclaration < Declaration
+  getter name : String
+  getter value : Expression?
+  getter type_identifier : TypeIdentifier? 
+
+  getter resolved_type : Type?
+
+  def initialize(@name : String, @value : Expression?, @type_identifier : TypeIdentifier? = nil)
+  end
+end
+
+class Parameter < Node
+  getter name : String
+  getter type_identifier : TypeIdentifier
+
+  getter resolved_type : Type?
+
+  def initialize(@name : String, @type_identifier : TypeIdentifier)
+  end
+end
+
+class FunctionDeclaration < Declaration
+  getter name : String
+  getter params : Array(Parameter)
+  getter generics : Array(String)
+  getter body : Expression
+  getter return_type_identifier : TypeIdentifier? 
+
+  getter resolved_type : Type?
+
+  def initialize(@name : String, @params : Array(Parameter), @generics : Array(Generic), @body : Expression, @return_type_identifier : TypeIdentifier? = nil)
+  end
+end
+
+class ProcedureDeclaration < Declaration
+  getter name : String
+  getter params : Array(Parameter)
+  getter generics : Array(String)
+  getter body : Procedure
+
+  getter resolved_type : Type?
+
+  def initialize(@name : String, @params : Array(Parameter), @generics : Array(String), @body : Procedure)
+  end
+end
+
+class Field < Parameter
+end
+
+class ProductTypeDeclaration < Declaration
+  getter name : String
+  getter generics : Array(String)
+  getter fields : Array(Field)
+
+  getter resolved_type : Type?
+
+  def initialize(@name : Name, @generics : Array(String), @fields : Array(Field))
+  end
+end
+
+class UnionTypeDeclaration < Declaration
+  getter name : String
+  getter generics : Array(String)
+  getter variants : Array(TypeIdentifier)
+
+  getter resolved_type : Type?
+
+  def initialize(@name : Name, @generics : Array(String), @variants : Array(TypeIdentifier))
+  end
+end
+
+# --- ./src/ast/expression.cr ---
+require "./node"
+
+class Expression < Node
+  getter resolved_type? : Type
+end
+
+class VariableExpression < Expression
+  getter variable : Variable
+
+  def initialize(@variable : Variable)
+  end
+end
+
+class UnaryExpression < Expression
+  getter operator : TokenType
+  getter right : Expression
+
+  def initialize(@operator : TokenType, @right : Expression)
+  end
+end
+
+class BinaryExpression < Expression
+  getter left : Expression
+  getter operator : TokenType
+  getter right : Expression
+
+  def initialize(@left : Expression, @operator : TokenType, @right : Expression)
+  end
+end
+
+class ArgsExpression < Expression
+  getter args : Array(Expression)
+
+  def initialize(@args : Array(Expression))
+  end
+end
+
+class IfExpression < Expression
+  getter branches : Array(IfBranch(Expression))
+  getter else_body : Expression?
+
+  def initialize(@branches : Array(IfBranch(Expression)), @else_body : Expression? = nil)
+  end
+end
+
+class VarReassignment < Expression
+  getter variable_identifier : VariableIdentifier
+  getter value : Expression
+
+  def initialize(@variable_identifier : VariableIdentifier, @value : Expression)
+  end
+end
+
+# --- ./src/ast/identifier.cr ---
+abstract class Identifier < Node
+  abstract def name : String
+end
+
+
+class VariableIdentifier < Identifier
+  getter name : String
+  getter module_names : Array(String)
+  getter accessor_names : Array(String)
+
+  def initialize(@name : String, @module_names : Array(String), @accessor_names : Array(String))
+  end
+end
+
+class TypeIdentifier < Identifier
+  getter name : String
+  getter inner_type_ids : Array(TypeIdentifier)
+
+  def initialize(@name : String, @inner_type_ids : Array(TypeIdentifier))
+  end
+end
+
+# --- ./src/ast/if_branch.cr ---
+class IfBranch(BodyType) < Node
+  getter condition : Expression
+  getter body : BodyType
+
+  def initialize(@condition : Expression, @body : BodyType)
+  end
+end
+
+# --- ./src/ast/literal.cr ---
+enum LiteralType
+    Char
+    String
+    Nil
+    Bool
+    Int
+    Float
+    Array
+    Tuple
+    Map
+end
+
+abstract class Literal < Expression
+    abstract def literal_type : LiteralType
+end
+
+abstract class LiteralValue < Literal
+end
+
+class StringLiteral < LiteralValue
+    getter value : String
+    def initialize(@value) end
+    def literal_type : LiteralType
+        LiteralType::String
+    end
+end
+
+class CharLiteral < LiteralValue
+    getter value : Char 
+    def initialize(@value) end
+    def literal_type : LiteralType
+        LiteralType::Char
+    end
+end
+
+class NilLiteral < LiteralValue
+    getter value : Nil
+    def initialize(@value) end
+    def literal_type : LiteralType
+        LiteralType::Nil
+    end
+end
+
+class BoolLiteral < LiteralValue
+    getter value : Bool
+    def initialize(@value) end
+    def literal_type : LiteralType
+        LiteralType::Bool
+    end
+end
+
+class IntLiteral < LiteralValue
+    getter value : Int128
+    def initialize(@value) end
+    def literal_type : LiteralType
+        LiteralType::Int
+    end
+end
+
+class FloatLiteral < LiteralValue
+    getter value : Float64
+    def initialize(@value) end
+    def literal_type : LiteralType
+        LiteralType::Float
+    end
+end
+
+abstract class LiteralCollection < Literal
+end
+
+class ArrayLiteral < LiteralCollection
+    getter items : Array(Expression)
+
+    def initialize(@items : Array(Expression))
+    end
+
+    def literal_type : LiteralType
+        LiteralType::Array
+    end
+end
+
+class TupleLiteral < ArrayLiteral
+    def literal_type : LiteralType
+        LiteralType::Tuple
+    end
+end
+
+class MapLiteral < LiteralCollection
+    getter mappings : Hash(Expression, Expression)
+
+    def initialize(@mappings : Hash(Expression, Expression))
+    end
+    
+    def literal_type : LiteralType
+        LiteralType::Map
+    end
+end
+
+# --- ./src/ast/node.cr ---
+abstract class Node
+end
+
+# --- ./src/ast/procedure.cr ---
+class Procedure < Node
+  getter statements : Array(Statement)
+
+  def initialize(@statements : Array(Statement) = [] of Statement)
+  end
+end
+
+# --- ./src/ast/statement.cr ---
+abstract class Statement < Node
+end
+
+class ExpressionStatement < Statement
+  getter expression : Expression
+
+  def initialize(@expression : Expression)
+  end
+end
+
+class WhileLoop < Statement
+  getter condition : Expression
+  getter body : Procedure
+
+  def initialize(@condition : Expression, @body : Procedure)
+  end
+end
+
+class Break < Statement
+end
+
+class Return < Statement
+end
+
+class IfStatement < Statement
+  getter branches : Array(IfBranch(Procedure))
+  getter else_body : Procedure?
+
+  def initialize(@branches : Array(IfBranch(Procedure)), @else_body : Procedure? = nil)
+  end
+end
+

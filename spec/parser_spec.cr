@@ -77,12 +77,6 @@ describe Parser do
 
     end
 
-    it "parses struct declaration" do
-      ast = parse("struct MyStruct has x : I32, y : String, z : Bool end")
-      struct_declaration = ast.procedure.statements.first.as(StructDeclaration)
-      struct_declaration.name.raw.should eq("MyStruct")
-      struct_declaration.fields.size.should eq(3)
-    end
 
     it "parses while loops" do
       ast = parse("while true do print(0); end");

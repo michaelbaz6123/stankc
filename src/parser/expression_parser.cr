@@ -27,10 +27,10 @@ module ExpressionParser
   end
 
 
-  private def parse_literal : Expression
+  private def parse_literal : Literal
     token = advance
 
-    literal_value = case token.type
+    case token.type
     when TokenType::INT_LITERAL
       value = token.lexeme.to_i128
       IntLiteral.new(value)
@@ -47,11 +47,55 @@ module ExpressionParser
       BoolLiteral.new(false)
     when TokenType::NIL
       NilLiteral.new(nil)
+    when TokenType::L_BRACK
+      parse_array_literal
+    when TokenType::L_BRACE
+      parse_map_literal
     else
       raise error("unexpected literal type #{token.lexeme}", token)
     end
+  end
 
-    return Literal.new(literal_value)
+  def parse_array_literal : ArrayLiteral
+    items = [] of Expression
+    unless peek.type == TokenType::R_BRACK
+      items << parse_expression
+      while match?(TokenType::COMMA)
+        items << parse_expression
+      end
+    end
+    consume(TokenType::R_BRACK, "expected ] to end array literal")
+    ArrayLiteral.new(items)
+  end
+
+  def parse_map_literal : MapLiteral
+    mapping = Hash(Expression, Expression).new
+    unless peek.type == TokenType::R_BRACK
+      key = parse_expression
+      consume(TokenType::ARROW, "expected =>, set literals not supported")
+      mapping[key] = parse_expression
+      
+      while match?(TokenType::COMMA)
+        key = parse_expression
+        consume(TokenType::ARROW, "expected =>, set literals not supported")
+        mapping[key] = parse_expression
+      end
+    end
+    consume(TokenType::R_BRACE, "expected } to end map literal")
+    MapLiteral.new(mapping)
+  end
+
+  def parse_tuple_literal(first_expression : Expression) : TupleLiteral
+    items = [first_expression]
+    unless peek.type == TokenType::R_PAREN
+      items << parse_expression
+      while match?(TokenType::COMMA)
+        items << parse_expression
+      end
+    end
+    consume(TokenType::R_PAREN, "expected ')' to end tuple literal")
+
+    return TupleLiteral.new(items)
   end
 
   private def parse_binary_expression(left : Expression, operator : Token, right : Expression) : Expression
@@ -72,34 +116,34 @@ module ExpressionParser
 
   private def parse_prefix : Expression
     case peek.type
-    when TokenType::INT_LITERAL,
-         TokenType::FLOAT_LITERAL,
-         TokenType::STRING_LITERAL,
-         TokenType::CHAR_LITERAL,
-         TokenType::TRUE,
-         TokenType::FALSE,
-         TokenType::NIL
+    when TokenType::INT_LITERAL, TokenType::FLOAT_LITERAL, TokenType::STRING_LITERAL,
+         TokenType::CHAR_LITERAL, TokenType::TRUE, TokenType::FALSE, TokenType::NIL,
+         TokenType::L_BRACK, TokenType::L_BRACE
       parse_literal
     when TokenType::IDENTIFIER
       parse_identifier_expression
     when TokenType::IF
       parse_if_expression
-    when TokenType::NOT || TokenType::SUB
+    when TokenType::NOT, TokenType::SUB
       operator = advance
       right = parse_expression(EXPR_PRECEDENCE[:UNARY])
       UnaryExpression.new(operator.type, right)
     when TokenType::L_PAREN
       advance
       expr = parse_expression
-      consume(TokenType::R_PAREN, "expected ')' to match '('")
-      expr
+      if match?(TokenType::COMMA)
+        expr = parse_tuple_literal(expr)
+      else
+        consume(TokenType::R_PAREN, "expected ')' to match '(' in expression")
+        return expr
+      end
     else
       raise error("unexpected token in expression #{peek.lexeme}", peek)
     end
   end
 
   private def parse_identifier_expression : Expression
-    variable = parse_variable
+    variable = parse_variable_identifier
     if peek.type == TokenType::L_PAREN
       return parse_procedure_call(variable)
     elsif match?(TokenType::FN_APPLY)
@@ -115,50 +159,34 @@ module ExpressionParser
     return TokenType::EOF # fallback so we have some tokentype to return, should never happen
   end
   
-  private def parse_procedure_call(callee : Variable) : ProcedureCall
-    args = parse_tuple_expression
-    return ProcedureCall.new(callee, args)
+  private def parse_procedure_call(callee : VariableIdentifier) : ProcedureCall
+    arguments = parse_arguments
+    return ProcedureCall.new(callee, arguments)
   end
 
-  private def parse_function_call(callee : Variable) : FunctionCall
-    args = if peek.type == TokenType::L_PAREN
-      parse_tuple_expression
-    else
-      TupleExpression.new([] of Expression)
-    end
-    return FunctionCall.new(callee, args)
+  private def parse_function_call(callee : VariableIdentifier) : FunctionCall
+    arguments = parse_arguments
+    return FunctionCall.new(callee, arguments)
   end
 
-  private def parse_tuple_expression : TupleExpression
-    args = [] of Expression
-    consume(TokenType::L_PAREN, "expected '(' to begin tuple expression")
-    unless peek.type == TokenType::R_PAREN
-      args << parse_expression
-      while match?(TokenType::COMMA)
-        args << parse_expression
+  private def parse_arguments : Array(Expression)
+    arguments = [] of Expression
+    if match?(TokenType::L_PAREN)
+      unless peek.type == TokenType::R_PAREN
+        arguments << parse_expression
+        while match?(TokenType::COMMA)
+          arguments << parse_expression
+        end
       end
+      consume(TokenType::R_PAREN, "expected ')' to end args in expression")
     end
-    consume(TokenType::R_PAREN, "expected ')' to end tuple expression")
-
-    return TupleExpression.new(args)
+    return arguments
   end
 
-  def parse_type : Type
-    inner_types = [] of Type
-    name = consume(TokenType::IDENTIFIER, "expected type annotation").lexeme
-    saw_open_paren = false
-    if match?(TokenType::L_PAREN) && (saw_open_paren = true)
-      inner_types << parse_type
-      while match?(TokenType::COMMA)
-        inner_types << parse_type
-      end
-    end
-    consume(TokenType::R_PAREN, "expected ')' to end type args") if saw_open_paren
-    return Type.new(name, inner_types)
-  end
+  
 
   private def parse_if_expression : IfExpression
-    branches = [] of IfBranch
+    branches = [] of IfBranch(Expression)
 
     consume(TokenType::IF, "expected 'if' to start if expression")
     condition = parse_expression

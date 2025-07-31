@@ -1,7 +1,7 @@
 require "./expression_parser"
 require "./procedure_parser"
 require "./token"
-require "./ast/ast"
+require "../ast/ast"
 require "./parse_error"
 
 class Parser
@@ -19,48 +19,76 @@ class Parser
     AST.new(parse_procedure(TokenType::EOF))
   end
 
-  def parse_variable : Variable
-    names = [] of Name
-    names << Name.new(advance.lexeme) 
-    while match?(TokenType::PERIOD)
-      names << Name.new(advance.lexeme)
+  private def parse_variable_identifier : VariableIdentifier 
+    first_name = advance.lexeme
+    module_names = [] of String
+    accessor_names = [] of String
+    name = first_name
+
+    if peek.type == TokenType::DOUBLE_COLON # if we have module names to parse...
+      module_names << first_name
+      while match?(TokenType::DOUBLE_COLON)
+        next_name = consume(TokenType::IDENTIFIER, "expect identifier").lexeme
+        if peek.type == TokenType::DOUBLE_COLON
+          module_names << next_name
+        else
+          name = next_name # last id after :: is the identifier name
+        end
+      end
     end
-    return Variable.new(names)
+
+    while match?(TokenType::PERIOD)
+      accessor_names << consume(TokenType::IDENTIFIER, "expect identifier for accessor name").lexeme
+    end
+
+    return VariableIdentifier.new(name, module_names, accessor_names)
   end
 
-  def match?(type : TokenType) : Token?
+  def parse_type_identifier : TypeIdentifier
+    inner_types = [] of TypeIdentifier
+    name = consume(TokenType::IDENTIFIER, "expected type identifier").lexeme
+    if match?(TokenType::L_PAREN)
+      inner_types << parse_type_identifier
+      while match?(TokenType::COMMA)
+        inner_types << parse_type_identifier
+      end
+      consume(TokenType::R_PAREN, "expected ')' to end type args")
+    end
+    if match?(TokenType::QUESTION)
+      inner_types = [TypeIdentifier.new(name, inner_types)]
+      name = "Maybe"
+    end
+    return TypeIdentifier.new(name, inner_types)
+  end
+
+  private def match?(type : TokenType) : Token?
     advance unless eof? || peek.type != type
   end
 
-  def consume(type : TokenType, message : String) : Token
+  private def consume(type : TokenType, message : String) : Token
     if peek.type == type
       return advance
     else
       bad_token = peek
-      raise error("unexpected #{bad_token.lexeme}, #{message}", bad_token)
+      raise error(message, bad_token)
     end
   end
 
-  def advance : Token
+  private def advance : Token
     token = @tokens[@current]
     @current += 1
     token
   end
 
-  def peek : Token
+  private def peek : Token
     @tokens[@current]
   end
 
-  def double_peek : Token
-    return @tokens[@current+1] unless eof?
-    @tokens[@current] # fallback to EOF if already at end 
-  end
-
-  def eof?
+  private def eof?
     peek.type == TokenType::EOF
   end
 
-  def error(message, bad_token : Token) : ParseError
-    ParseError.new(message, bad_token.line, bad_token.column)
+  private def error(message, bad_token : Token) : ParseError
+    ParseError.new("unexpected #{bad_token.lexeme}, #{message}", bad_token.line, bad_token.column)
   end
 end

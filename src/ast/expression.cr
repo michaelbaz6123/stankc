@@ -1,19 +1,13 @@
 require "./node"
 
-abstract class Expression < Node
-end
-
-class Literal < Expression
-  getter literal_value : LiteralValue
-
-  def initialize(@literal_value : LiteralValue)
-  end
+class Expression < Node
+  property resolved_type : Type?
 end
 
 class VariableExpression < Expression
-  getter variable : Variable
+  getter variable : VariableIdentifier
 
-  def initialize(@variable : Variable)
+  def initialize(@variable : VariableIdentifier)
   end
 end
 
@@ -34,25 +28,19 @@ class BinaryExpression < Expression
   end
 end
 
-class TupleExpression < Expression
-  getter args : Array(Expression)
-
-  def initialize(@args : Array(Expression))
-  end
-end
 
 class IfExpression < Expression
-  getter branches : Array(IfBranch)
+  getter branches : Array(IfBranch(Expression))
   getter else_body : Expression?
 
-  def initialize(@branches : Array(IfBranch), @else_body : Expression? = nil)
+  def initialize(@branches : Array(IfBranch(Expression)), @else_body : Expression? = nil)
   end
 end
 
 class VarReassignment < Expression
-  getter variable : Variable
+  getter variable_identifier : VariableIdentifier
   getter value : Expression
 
-  def initialize(@variable : Variable, @value : Expression)
+  def initialize(@variable_identifier : VariableIdentifier, @value : Expression)
   end
 end

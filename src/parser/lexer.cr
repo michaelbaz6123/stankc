@@ -109,7 +109,7 @@ class Lexer
         if match?('=')
           new_token(TokenType::BITWISE_OR_ASSIGN, "|=")
         else
-          new_token(TokenType::BITWISE_OR, "|")
+          new_token(TokenType::BAR, "|") # bitwise or / type or
         end
       end
     when '^'
@@ -122,14 +122,28 @@ class Lexer
       new_token(TokenType::L_PAREN, "(")
     when ')'
       new_token(TokenType::R_PAREN, ")")
+    when '['
+      new_token(TokenType::L_BRACK, "[")
+    when ']'
+      new_token(TokenType::R_BRACK, "]")
+    when '{'
+      new_token(TokenType::L_BRACE, "{")
+    when '}'
+      new_token(TokenType::R_BRACE, "}")
     when ','
       new_token(TokenType::COMMA, ",")
     when '%'
       new_token(TokenType::MODULUS, "%")
     when ':'
-      new_token(TokenType::COLON, ":")
+      if match?(':')
+        new_token(TokenType::DOUBLE_COLON, "::")
+      else
+        new_token(TokenType::COLON, ":")
+      end
     when ';'
       new_token(TokenType::SEMICOLON, ";")
+    when '?'
+      new_token(TokenType::QUESTION, "?")
     when '0'..'9'
       number_token(c) 
     when 'a'..'z', 'A'..'Z', '_'
@@ -216,10 +230,20 @@ class Lexer
   end
 
   private def pass_whitespace
-    while !eof? && [' ', '\t', '\n', '\r'].includes?(peek)
-      advance
+    until eof?
+      case peek 
+      when ' ' , '\t' , '\n' , '\r'
+        advance
+      when '#' # only line based comments allowed for now
+        until match?('\n')
+          advance
+        end
+      else 
+        break 
+      end
     end
   end
+
 
   private def eof?
     @current >= @source.size
