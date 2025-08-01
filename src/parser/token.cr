@@ -13,6 +13,7 @@ enum TokenType
   MODULE; DEF
   SEMICOLON; COLON; COMMA; PERIOD; EQ; QUESTION
   DOUBLE_COLON;
+  MATCH; UNDERSCORE
   LET; VAR; END
   L_PAREN; R_PAREN;
   L_BRACK; R_BRACK;
@@ -53,7 +54,9 @@ KEYWORDS = {
   %(is)       => TokenType::IS,
   %(type)     => TokenType::TYPE,
   %(module)   => TokenType::MODULE,
-  %(def)      => TokenType::DEF
+  %(def)      => TokenType::DEF,
+  %(match)    => TokenType::MATCH,
+  %(_)        => TokenType::UNDERSCORE,
 }
 
 ASSIGN_OPERATORS = Set {

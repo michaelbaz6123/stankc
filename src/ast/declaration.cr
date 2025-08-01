@@ -15,9 +15,9 @@ class Binding < Declaration
   getter value : Expression
   getter type_identifier : TypeIdentifier?
   
-  getter resolved_type : Type?
+  property resolved_type : Type?
 
-  def initialize(@name : String, @value : Expression, type_identifier : TypeIdentifier? = nil)
+  def initialize(@name : String, @value : Expression, @type_identifier : TypeIdentifier?)
   end
 
 end
@@ -27,7 +27,7 @@ class VarDeclaration < Declaration
   getter value : Expression?
   getter type_identifier : TypeIdentifier? 
 
-  getter resolved_type : Type?
+  property resolved_type : Type?
 
   def initialize(@name : String, @value : Expression?, @type_identifier : TypeIdentifier? = nil)
   end
@@ -37,7 +37,7 @@ class Parameter < Node
   getter name : String
   getter type_identifier : TypeIdentifier
 
-  getter resolved_type : Type?
+  property resolved_type : Type?
 
   def initialize(@name : String, @type_identifier : TypeIdentifier)
   end
@@ -50,7 +50,7 @@ class FunctionDeclaration < Declaration
   getter body : Expression
   getter return_type_identifier : TypeIdentifier? 
 
-  getter resolved_type : Type?
+  property resolved_type : Type?
 
   def initialize(@name : String, @params : Array(Parameter), @generics : Array(String), @body : Expression, @return_type_identifier : TypeIdentifier? = nil)
   end
@@ -62,7 +62,7 @@ class ProcedureDeclaration < Declaration
   getter generics : Array(String)
   getter body : Procedure
 
-  getter resolved_type : Type?
+  property resolved_type : Type?
 
   def initialize(@name : String, @params : Array(Parameter), @generics : Array(String), @body : Procedure)
   end
@@ -76,7 +76,7 @@ class ProductTypeDeclaration < Declaration
   getter generics : Array(String)
   getter fields : Array(Field)
 
-  getter resolved_type : Type?
+  property resolved_type : Type?
 
   def initialize(@name : String, @generics : Array(String), @fields : Array(Field))
   end
@@ -87,7 +87,7 @@ class UnionTypeDeclaration < Declaration
   getter generics : Array(String)
   getter variants : Array(TypeIdentifier)
 
-  getter resolved_type : Type?
+  property resolved_type : Type?
 
   def initialize(@name : String, @generics : Array(String), @variants : Array(TypeIdentifier))
   end

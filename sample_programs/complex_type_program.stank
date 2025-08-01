@@ -1,0 +1,48 @@
+type Some<T> has value : T end
+type Maybe<T> is Some(T) | Nil end
+
+type Ok is Nil end
+type Err has message : String end
+type Result is Ok | Err end
+
+
+type Cons<T> has
+  car : T,
+  cdr : Cons(T)?
+end
+type List<T> is
+  Cons(T)?
+end
+
+fn maybe_inc$(maybe_int : Int?): Int? =>
+  match maybe_int then
+    Some(value = v) => Some(value = v + 1),
+    Nil             => nil
+  end
+end
+
+
+# Build a recursive list
+let list = List(
+  car = 5, cdr = Cons(car = 6, cdr = Cons(car = 7, cdr = nil))
+);
+
+fn sum_list$ (l: List(Int)): Int =>
+  match l then
+    Cons(car = value, cdr = rest) => value + sum_list(rest),
+    Nil => 0
+  end
+end
+
+# Match and bind deeply nested values
+let nested = Ok(data = Some(value = 42));
+
+let result = match nested then
+  Ok(data = Some(value = inner)) => inner * 2,
+  Ok(data = None) => 0,
+  Err(message = msg) => 999
+end;
+
+print(result); # Should print 84
+
+

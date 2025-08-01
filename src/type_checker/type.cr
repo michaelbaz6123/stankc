@@ -81,4 +81,8 @@ class FunctionType < Type
       other.param_types.size == param_types.size &&
       other.param_types.zip(param_types).all? { |o, s| o == s }
   end
+
+  def name : String
+    to_s
+  end
 end

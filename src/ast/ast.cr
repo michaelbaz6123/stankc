@@ -6,6 +6,7 @@ require "./if_branch"
 require "./literal"
 require "./procedure"
 require "./statement"
+require "./pattern"
 require "../type_checker/type"
 
 class AST < Node
