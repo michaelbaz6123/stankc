@@ -14,18 +14,19 @@ module ProcedureParser
   end
 
   private def parse_statement : Statement?
-    return parse_binding       if match?(TokenType::LET)
-    return parse_var_declaration    if match?(TokenType::VAR)
-    return parse_while_loop    if match?(TokenType::WHILE)
-    return parse_function_declaration if match?(TokenType::FN)
-    return parse_type_declaration if match?(TokenType::TYPE)
-    return parse_module_declaration if match?(TokenType::MODULE)
 
-    if match?(TokenType::IF)
+    return parse_binding       if match?(TokenType::LET)
+    return parse_var_declaration if match?(TokenType::VAR)
+    return parse_while_loop    if peek.type == TokenType::WHILE
+    return parse_function_declaration if peek.type == TokenType::FN
+    return parse_type_declaration if peek.type == TokenType::TYPE
+    return parse_module_declaration if peek.type == TokenType::MODULE
+
+    if token = match?(TokenType::IF)
       if match?(TokenType::LET)
-        return parse_if_let_statement
+        return parse_if_let_statement(location(token))
       else
-        return parse_if_statement
+        return parse_if_statement(location(token))
       end
     end
     
@@ -34,8 +35,9 @@ module ProcedureParser
       return parse_procedure_declaration
     end
     
-    return Break.new if match?(TokenType::BREAK) && match?(TokenType::SEMICOLON)
-    return Return.new if match?(TokenType::RETURN) && match?(TokenType::SEMICOLON)
+    if token = match?(TokenType::BREAK) && match?(TokenType::SEMICOLON)
+      Break.new(location(token))
+    end
 
     return parse_expression_statement
   end
@@ -43,7 +45,7 @@ module ProcedureParser
   private def parse_expression_statement : ExpressionStatement
     expr = parse_expression
     consume(TokenType::SEMICOLON, "expected ';' after expression statement")
-    return ExpressionStatement.new(expr)
+    return ExpressionStatement.new(expr, expr.source_location)
   end
 
   private def parse_var_reassignment : ExpressionStatement
@@ -56,20 +58,20 @@ module ProcedureParser
     )
   end
 
-  private def parse_if_statement : IfStatement
+  private def parse_if_statement(location : SourceLocation) : IfStatement
     branches = [] of IfBranch(Procedure)
 
     condition = parse_expression
-    consume(TokenType::DO, "expected 'do' after if condition")
+    do_token = consume(TokenType::DO, "expected 'do' after if condition")
     body = parse_procedure(TokenType::ELSE, TokenType::ELIF, TokenType::END)
-    branches << IfBranch.new(condition, body)
+    branches << IfBranch.new(condition, body, location(do_token))
 
     while peek.type == TokenType::ELIF
       advance # TokenType::ELIF
       condition = parse_expression
-      consume(TokenType::DO, "expected 'do' after elif condition")
+      do_token = consume(TokenType::DO, "expected 'do' after elif condition")
       body = parse_procedure(TokenType::ELSE, TokenType::ELIF, TokenType::END)
-      branches << IfBranch.new(condition, body)
+      branches << IfBranch.new(condition, body, location(do_token))
     end
 
     else_body = if peek.type == TokenType::ELSE
@@ -78,15 +80,16 @@ module ProcedureParser
     end
     consume(TokenType::END, "expected 'end' to end if statement")
 
-    return IfStatement.new(branches, else_body)
+    return IfStatement.new(branches, else_body, location)
   end
 
   private def parse_while_loop
+    token = consume(TokenType::WHILE, "expected `while` to begin while loop`")
     condition = parse_expression
     consume(TokenType::DO, "expected 'do' after condition")
     body = parse_procedure(TokenType::END)
     consume(TokenType::END, "expected 'end' to end while loop")
-    return WhileLoop.new(condition, body)
+    return WhileLoop.new(condition, body, location(token))
   end
   
 end

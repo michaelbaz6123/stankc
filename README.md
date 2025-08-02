@@ -99,7 +99,7 @@ end
 ```
 let x : Int? = Some(value = 12);
 let y = match x then
-  Some(value = i) => Some(value = i + 2);
+  Some(i = value) => Some(value = i + 2);
   Nil     => nil;
 end;
 print(x); # Some(value = 12)
@@ -108,7 +108,7 @@ print(y); # Some(value = 14)
 - Similarly, in procedures `if let ... do` can be used to unwrap a `var` into mutable references of its fields:
 ```
 var x : String? = Some(value = "something");
-if let x = Some(s) do
+if let Some(s) = x do
   s = "another thing"; # mutates x's Some value, (x must be var!)
 end
 print(x); # Some(value = "another thing") 

@@ -4,7 +4,9 @@ abstract class Call < Expression
   getter callee : VariableIdentifier
   getter arguments : Array(Expression)
 
-  def initialize(@callee : VariableIdentifier, @arguments : Array(Expression))
+  getter source_location : SourceLocation
+
+  def initialize(@callee : VariableIdentifier, @arguments : Array(Expression), @source_location : SourceLocation)
   end
 end
 

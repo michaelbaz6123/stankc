@@ -20,7 +20,8 @@ class Parser
   end
 
   private def parse_variable_identifier : VariableIdentifier 
-    first_name = advance.lexeme
+    token = consume(TokenType::IDENTIFIER, "expected identifier")
+    first_name = token.lexeme
     module_names = [] of String
     accessor_names = [] of String
     name = first_name
@@ -41,12 +42,13 @@ class Parser
       accessor_names << consume(TokenType::IDENTIFIER, "expect identifier for accessor name").lexeme
     end
 
-    return VariableIdentifier.new(name, module_names, accessor_names)
+    return VariableIdentifier.new(name, module_names, accessor_names, location(token))
   end
 
   def parse_type_identifier : TypeIdentifier
     inner_types = [] of TypeIdentifier
-    name = consume(TokenType::IDENTIFIER, "expected type identifier").lexeme
+    token = consume(TokenType::IDENTIFIER, "expected type identifier")
+    name = token.lexeme
     if match?(TokenType::L_PAREN)
       inner_types << parse_type_identifier
       while match?(TokenType::COMMA)
@@ -55,10 +57,10 @@ class Parser
       consume(TokenType::R_PAREN, "expected ')' to end type args")
     end
     if match?(TokenType::QUESTION)
-      inner_types = [TypeIdentifier.new(name, inner_types)]
+      inner_types = [TypeIdentifier.new(name, inner_types, location(token))]
       name = "Maybe"
     end
-    return TypeIdentifier.new(name, inner_types)
+    return TypeIdentifier.new(name, inner_types, location(token))
   end
 
   private def match?(type : TokenType) : Token?
@@ -80,6 +82,10 @@ class Parser
     token
   end
 
+  private def location(token : Token) : SourceLocation
+    SourceLocation.new(token.line, token.column)
+  end
+
   private def peek : Token
     @tokens[@current]
   end
@@ -88,7 +94,14 @@ class Parser
     peek.type == TokenType::EOF
   end
 
+  # wrapper for passing line and column info on from token to node
+  private def new_node(node : Node, token : Token) : Node
+    node.line = token.line
+    node.column = token.column
+    return node
+  end
+
   private def error(message, bad_token : Token) : ParseError
-    ParseError.new("unexpected #{bad_token.lexeme}, #{message}", bad_token.line, bad_token.column)
+    ParseError.new("#{bad_token.line}:#{bad_token.column} : unexpected #{bad_token.lexeme}, #{message}", bad_token.line, bad_token.column)
   end
 end

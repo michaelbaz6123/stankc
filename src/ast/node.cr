@@ -1,2 +1,2 @@
-abstract class Node
+class Node
 end

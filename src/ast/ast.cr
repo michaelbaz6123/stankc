@@ -7,6 +7,7 @@ require "./literal"
 require "./procedure"
 require "./statement"
 require "./pattern"
+require "./source_location"
 require "../type_checker/type"
 
 class AST < Node
