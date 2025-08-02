@@ -34,7 +34,7 @@ If a procedure needs to communicate a result, it should do so by:
 - Bindings are immutable, while variables can be reassigned.
 ```
 let x : Int = 10; # Binds x of Int to Int 10
-# x = 2;          # Compilation error<"Invalid mutation on binding x">
+# x = 2;          # Type error: Invalid mutation on binding x
 
 var y : Int = 12; # Assigns variable y of Int to Int 12
 y = 31;           # Reassigns y to Int 31
@@ -46,13 +46,23 @@ var q = "Hello";  # q is inferred to be type String
 - Variables can optionally be declared with no initialized value. Access before initialization will still be an error, of course.
 - Type annotation optional if the type of the binding/variable can be inferred by its value.
 
-## ➡️ Printing
-- `print` is an included language procedure that takes a value and performs an IO side effect (to stdout, by default).
+## ➡️ Input and Output
+- `print` and `println` (adds newline) are included language procedures that take a value and perform an IO side effect (to stdout, by default).
 ```
 let x = 10;
-print(x); # 10
+print(x); print(", ");
+println("Hello, world!"); 
+# > 10, "Hello, world!"
+```
+- `input` is a language procedure that takes a value as a reference to have user input stored in:
+```
+var x : I32;
+println("Please enter a number: ");
+input(x); 
+# < 12
 
-print("Hello, world!"); # "Hello, world!"
+print("You entered: "); println(x); 
+# > You entered 12
 ```
 
 ## ➡️ Declaring Types
@@ -63,7 +73,7 @@ type IntOrString is
   Int | String 
 end
 
-# Works as an alias too!
+# Also for aliasing!
 type MagicNumber is Int end
 ```
 - All unions are structural, and field access on a union is valid only if all branches have the field.
@@ -74,10 +84,13 @@ type IntPoint has
   x : Int,
   y : Int
 end
-
 let point : IntPoint = IntPoint(x = 10, y = 13);
-print(point.x); # 10
-print(point.y); # 13
+
+println(point.x); 
+# > 10
+
+println(point.y); 
+# > 13
 ```
 
 ## ➡️ Generic Types
@@ -102,8 +115,12 @@ let y = match x then
   Some(i = value) => Some(value = i + 2);
   Nil     => nil;
 end;
-print(x); # Some(value = 12)
-print(y); # Some(value = 14)
+
+println(x); 
+# > Some(value = 12)
+
+println(y); 
+# > Some(value = 14)
 ```
 - Similarly, in procedures `if let ... do` can be used to unwrap a `var` into mutable references of its fields:
 ```
@@ -111,7 +128,9 @@ var x : String? = Some(value = "something");
 if let Some(s) = x do
   s = "another thing"; # mutates x's Some value, (x must be var!)
 end
-print(x); # Some(value = "another thing") 
+
+println(x); 
+# > Some(value = "another thing") 
 ```
 
 ## ➡️ Collective Types
@@ -120,21 +139,28 @@ print(x); # Some(value = "another thing")
 ```
 var my_array : Array(Int) = [1, 2, 3, 4, 5]; # Array literal
 my_array[0] = 12;
-print(my_array[2]) # 3
-print(my_array[0]) # 12
+
+println(my_array[2]) 
+# > 3
+println(my_array[0]) 
+# > 12
 ```
 - `Tuple(FirstType, SecondType, ...)`: fixed-size, heterogeneous over listed `FirstType, SecondType, ...`
 ```
 var my_tuple : Tuple(Int, String, Bool) = (10, "Hello", true); # Tuple literal
-print(my_tuple[1]) # "Hello"
+println(my_tuple[1]) 
+# > Hello
 
 ```
 - `Hash(K, V)`: maps keys of `K` to `V`
 ```
 var my_hash : Hash(String, Int) = { "foo" => 0 } # Hash literal
-print(my_hash["foo"]) # 0
+println(my_hash["foo"]) 
+# > 0
+
 my_hash["bar"] = 34
-print(my_hash["bar"]) # 34
+println(my_hash["bar"]) 
+# > 34
 
 ```
 
@@ -157,12 +183,34 @@ print(my_hash["bar"]) # 34
   end
 
   # Call foo with arguments
-  let x = foo$(2, 11, -3); # x : Int = 10
+  let x = foo$(2, 11, -3); # x == 10
 
   # Parentheses optional for no arg functions
   fn bar $ => "something" end  # Inferred to evaluate to String
-  print(bar$)
+  print(bar$);
   ```
+
+### Lambdas and Higher Order Functions
+- Functions can be passed around like values as first class objects.
+- A function that takes an `x : Int` and evaluates to a `Int` would have type `$ Int => Int`
+```
+fn double$(i : Int) : Int => 2 * i end;
+
+proc apply_and_print(x : Int, f : $ Int => Int) do
+  let applied = f$(x);
+  println(applied);
+end
+
+apply_and_print(13, double); 
+# > 26
+```
+- Functions can be unnamed as lambda expressions with `$`:
+```
+# Continuing from above:
+
+apply_and_print(5, $ (x : Int) => 10 * x end); 
+# > 50
+```
 
 
  ### Procedures
@@ -185,20 +233,21 @@ print(my_hash["bar"]) # 34
   ```
   proc my_proc(x : Int) do 
     if x > 0
-      print(x);
+      println(x);
     else
       raise "Error occurred";
     end
   end 
 
   result = my_proc(-1);
-  print(result.message) # Error occurred
+  println(result.message) 
+  # > Error occurred
   ```
   - Use `?` operator on a procedure call inside another procedure to pass through errors:
   ```
   proc print_non_zero(x : Int) do
     if x != 0 do
-      print(x);
+      println(x);
     else
       raise "x is zero!"
     end
@@ -214,12 +263,12 @@ print(my_hash["bar"]) # 34
     # otherwise, continues procedure...
 
 
-    print("Doing some stuff...");
+    println("Doing some stuff...");
   end
 
   let good_result : Result = do_stuff(20); # good_result = Ok
-  # 20
-  # "Doing some stuff..."
+  # > 20
+  # > Doing some stuff...
 
   let bad_result : Result = do_stuff(0); # bad_result = Err(message = "x is zero!")
   ```
@@ -233,7 +282,8 @@ print(my_hash["bar"]) # 34
     end
 
     proc bar<T>(x : T) do
-      print(x.field) # Type inference will check if x's type has field at call
+      # Type inference will check if x's type has field at call
+      println(x.field) 
     end
     ```
 
@@ -248,23 +298,98 @@ print(my_hash["bar"]) # 34
     ```
     proc printSign(x : Int) do
         if x < 0 do
-            print("negative");
+            println("negative");
         else
-            print("non-negative");
+            println("non-negative");
         end
     end
     ```
-- `while ... do ... end`
-  - Loop a procedure while condition is true.
-  - Same as `if do`, procedure can (and should) have side effects.
+- `while <cond_expr> do ... end`
+  - Loop a procedure while `cond_expr` is true.
   - Example:
     ```
-    ...
       while x > 0 do
-        print(x);
+        println(x);
         x -= 1;
       end
     ```
+- `for var <id_init> <cond_expr> [by <statement>] do ... end`
+  - Loop a procedure over a range from `<start>` to `<end>`, counter stored in `<identifier>`.
+  - Example:
+    ```
+      for var i = 0; i < 5 do
+        println(i);
+      end
+      # > 0
+      # > 1
+      # > 2
+      # > 3
+      # > 4
+
+      # Increment alteratively (default increments declared var by 1)
+      for var j = 0; j < 10 by j += 2; do
+        println(j);
+      end
+      # > 0
+      # > 2
+      # > 4
+      # > 6
+      # > 8
+    ```
+### Looping Over Collective Types
+- Looping over an array:
+  ```
+  let my_array : Array(Int) = [12, 24, 36];
+  for Int : i = 0; my_array.length do
+    println(i)
+    println(my_array[i])
+  end
+  ```
+- Looping over a set:
+  ```
+  type Set<T> has items : Array(T) end
+
+  let my_set : Set(Int);
+  my_set.insert(1); my_set.insert(2); my_set.insert(3);
+  for var i = 0; my_set.items.length do
+    println(my_set.items[i]);
+  end
+  ```
+- Looping over a hash:
+  ```
+  type Entry<K, V> has 
+    key : K, 
+    value : V 
+  end
+
+  type Hash<K, V> has
+    keys : Array(K),
+    values : Array(V),
+    entries : Array(Entry(K, V))
+  end
+
+  let my_hash = {2 => 10, 4 => 100};
+
+  for var i = 0; i < my_hash.keys.length do
+    println(my_hash.keys[i]);
+  end
+  # > 2
+  # > 4
+
+  for var i = 0; i < my_hash.values.length do
+    println(my_hash.values[i]);
+  end
+  # > 100
+  # > 10
+
+  for var i = 0; i < my_hash.entries.length do
+    let entry = my_hash.entries[i];
+    let result = entry.key + entry.value;
+    println(result);
+  end
+  # > 104
+  # > 12
+  ```
 
 ## ➡️ Expressions
 
@@ -347,7 +472,7 @@ my_library.stank:
 ```
 module MyModule has
   proc foo() do
-    print("Hello world!");
+    println("Hello world!");
   end
 
   fn bar $ (x : Int) =>
@@ -360,8 +485,8 @@ my_program.stank:
 import MyModule from "/path/to/my_library";
 
 proc main() do
-  MyModule::foo();          # "Hello, world!"
-  print(MyModule::bar(12)); # 12
+  MyModule::foo();          # Hello, world!
+  println(MyModule::bar(12)); # 12
 end
 ```
 
