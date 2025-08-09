@@ -1,1 +1,8 @@
+type Point<A, B> has
+  a : A,
+  b : B
+end
 
+
+
+let my_point = Point(a = Point(a = 1, b = "hi"), b = true);

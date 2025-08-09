@@ -32,7 +32,10 @@ module ExpressionParser
 
   private def parse_binary_expression(left : Expression, operator : Token, right : Expression) : Expression
     if assign_operator?(operator)
-      var_expr = left.as(VariableExpression)
+      var_expr = begin left.as(VariableExpression)
+      rescue
+        raise error("left side of assignment operator must be a variable", operator)
+      end
       var = var_expr.variable
       if operator.type == TokenType::EQ
         return VarReassignment.new(var, right, var.source_location)

@@ -91,8 +91,6 @@ class ProductTypeDeclaration < Declaration
 
   getter source_location : SourceLocation
 
-  property resolved_type : Type?
-
   def initialize(@name : String, @generics : Array(String), @fields : Array(Field), @source_location : SourceLocation)
   end
 end
@@ -103,8 +101,6 @@ class UnionTypeDeclaration < Declaration
   getter variants : Array(TypeIdentifier)
 
   getter source_location : SourceLocation
-
-  property resolved_type : Type?
 
   def initialize(@name : String, @generics : Array(String), @variants : Array(TypeIdentifier), @source_location : SourceLocation)
   end

@@ -357,38 +357,59 @@ apply_and_print(5, $ (x : Int) => 10 * x end);
   ```
 - Looping over a hash:
   ```
-  type Entry<K, V> has 
-    key : K, 
-    value : V 
-  end
-
-  type Hash<K, V> has
-    keys : Array(K),
-    values : Array(V),
-    entries : Array(Entry(K, V))
-  end
+  # ======== From Standard Library ========
+  #
+  # type Entry<K, V> has 
+  #   key : K, 
+  #   value : V 
+  # end
+  # 
+  # type Iterator<T> has
+  #   next : $ => Tuple(T, Iterator<T>)?
+  # end
+  # 
+  # type Hash<K, V> has
+  #   entries : Iterator(Entry(K, V)),
+  #   keys : Iterator(K),
+  #   values : Iterator(V),
+  #   ...,
+  # end
+  #
 
   let my_hash = {2 => 10, 4 => 100};
 
-  for var i = 0; i < my_hash.keys.length do
-    println(my_hash.keys[i]);
+  for key in my_hash.keys do
+    println(key);
   end
   # > 2
   # > 4
 
-  for var i = 0; i < my_hash.values.length do
-    println(my_hash.values[i]);
+  # * Desugars to: *
+  # iter = my_hash.keys;
+  # while true do
+  #   if let Some(value = (key, next_iter)) = iter.next$ =>
+  #     println(key);
+  #     iter = next_iter;
+  #   else
+  #     break;
+  #   end
+  # end
+
+
+  for value in my_hash.values do
+    println(value);
   end
   # > 100
   # > 10
 
-  for var i = 0; i < my_hash.entries.length do
-    let entry = my_hash.entries[i];
+  for entry in my_hash.entries do
     let result = entry.key + entry.value;
     println(result);
   end
   # > 104
   # > 12
+
+  
   ```
 
 ## ➡️ Expressions
@@ -457,7 +478,7 @@ module MyModule has
   end
 end
 
-let module_result : Int = MyModule::foo$(12)
+let module_result : Int = MyModule::foo$(12); # 13
 ```
 
 ## ➡️ Program Structure

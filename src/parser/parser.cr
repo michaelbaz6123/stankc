@@ -45,22 +45,22 @@ class Parser
     return VariableIdentifier.new(name, module_names, accessor_names, location(token))
   end
 
-  def parse_type_identifier : TypeIdentifier
+  def parse_type_identifier(location : SourceLocation) : TypeIdentifier
     inner_types = [] of TypeIdentifier
-    token = consume(TokenType::IDENTIFIER, "expected type identifier")
-    name = token.lexeme
+    name = if t = match?(TokenType::IDENTIFIER); t.lexeme else "Tuple" end
+
     if match?(TokenType::L_PAREN)
-      inner_types << parse_type_identifier
+      inner_types << parse_type_identifier(location)
       while match?(TokenType::COMMA)
-        inner_types << parse_type_identifier
+        inner_types << parse_type_identifier(location)
       end
       consume(TokenType::R_PAREN, "expected ')' to end type args")
     end
     if match?(TokenType::QUESTION)
-      inner_types = [TypeIdentifier.new(name, inner_types, location(token))]
+      inner_types = [TypeIdentifier.new(name, inner_types, location)]
       name = "Maybe"
     end
-    return TypeIdentifier.new(name, inner_types, location(token))
+    return TypeIdentifier.new(name, inner_types, location)
   end
 
   private def match?(type : TokenType) : Token?

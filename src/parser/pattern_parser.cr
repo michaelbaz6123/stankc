@@ -44,6 +44,8 @@ module PatternParser
       LiteralPattern.new(literal, literal.source_location)
     when TokenType::UNDERSCORE
       WildCardPattern.new(location(advance))
+    when TokenType::L_PAREN
+      parse_tuple_pattern
     when TokenType::IDENTIFIER
       name = token.lexeme
       if name[0].ascii_uppercase? # type variant like (value = Nil)
@@ -55,6 +57,18 @@ module PatternParser
       raise error("expected pattern", peek)
     end
   end
+
+  private def parse_tuple_pattern : TuplePattern
+    token = consume(TokenType::L_PAREN, "expected '(' to begin tuple match expression")
+    patterns = [] of Pattern
+    patterns << parse_pattern
+    while match?(TokenType::COMMA)
+      patterns << parse_pattern
+    end
+    consume(TokenType::R_PAREN, "expected ')' to end tuple match expression")
+    return TuplePattern.new(patterns, location(token))
+  end
+
 
   private def parse_variant_pattern : VariantPattern
     token = consume(TokenType::IDENTIFIER, "expected type variant name in if let pattern match")

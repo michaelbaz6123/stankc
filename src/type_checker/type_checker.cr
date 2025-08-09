@@ -1,20 +1,29 @@
 require "./type_env"
 require "./type_error"
 require "./type"
+require "./definition"
+require "./declaration_type_checker"
+require "./expression_type_checker"
 
 class TypeChecker
-  @env : TypeEnv
+  include DeclarationTypeChecker
+  include ExpressionTypeChecker
+
+  @env : TypeEnvironment
 
   def initialize
-    @env = TypeEnv.new
+    @env = TypeEnvironment.new
+    ["Int", "Float", "Bool", "Char", "Nil", "String"].each do |name|
+      @env.define_type(name, AtomicTypeDefinition.new(name))
+    end
   end
 
   def check(ast : AST)
     check_procedure(ast.procedure)
   end
 
-  private def check_procedure(proc : Procedure)
-    proc.statements.each do |stmt|
+  private def check_procedure(procedure : Procedure)
+    procedure.statements.each do |stmt|
       check_statement(stmt)
     end
   end
@@ -24,7 +33,9 @@ class TypeChecker
     when Binding
       check_binding(stmt)
     when ProductTypeDeclaration
-      check_product_type_declatation(stmt)
+      check_product_type_declaration(stmt)
+    when UnionTypeDeclaration
+      check_union_type_declaration(stmt)
     when FunctionDeclaration
       check_function_declaration(stmt)
     when ProcedureDeclaration
@@ -34,82 +45,21 @@ class TypeChecker
     end
   end
 
-  private def check_expr(expr : Expression) : Type
-    resolved_type = case expr
-    when IntLiteral
-      NamedType.new("Int")
-    when FloatLiteral
-      NamedType.new("Float")
-    when BoolLiteral
-      NamedType.new("Bool")
-    when VariableExpression
-      name = expr.variable.name
-      # module_names = expr.variable.module_names
-      type = @env.lookup(name) # TODO add module namespace lookup
-      raise error("Undefined variable: #{name}") unless type
-      type
-    when BinaryExpression
-      lhs_type = check_expr(expr.left)
-      rhs_type = check_expr(expr.right)
-
-      case expr.operator
-      when TokenType::ADD
-        if lhs_type == rhs_type && is_numeric_type(lhs_type)
-          lhs_type
-        else
-          raise error("Type error: cannot apply '+' to #{lhs_type.name} and #{rhs_type.name}")
-        end
-      else
-        raise error("Unsupported binary operator #{expr.operator}")
-      end
-    else
-      raise error("Unhandled expression type: #{expr.class}")
-    end
-    expr.resolved_type = resolved_type
-  end
-
-  private def check_binding(binding : Binding)
-    name = binding.name
-    maybe_type_id = binding.type_identifier
-    value_type = check_expr(binding.value)
-    resolved_type = value_type
-    if type_id = maybe_type_id
-      annotation_type = parse_type_identifier(type_id)
-      unless annotation_type == value_type
-        raise error("Type mismatch in binding '#{name}': expected #{annotation_type.name}, got #{value_type.name}")
-      end
-      resolved_type = annotation_type
-    end
-
-    binding.resolved_type = resolved_type
-    @env.declare(name, resolved_type)
-  end
-
-  private def check_function_declaration(declaration : FunctionDeclaration)
-
-  end
-
-  private def check_product_type_declatation(declaration : ProductTypeDeclaration)
-    # ensure types in fields are either in scope OR a generic attached
-    # in the product type declaration name MyType<T>
-  end
-
-  private def check_procedure_declaration(declaration : ProcedureDeclaration)
-    # ensure 
-  end
-
   # AST type identifier from user type annotations to resolved type
-  private def parse_type_identifier(type_identifier : TypeIdentifier) : Type
-    name = type_identifier.name
+  private def parse_type_identifier(type_identifier : TypeIdentifier, generics : Array(String) = [] of String) : Type
+    name = ensure_type_name(type_identifier.name)
+
+    if generics.includes?(name)
+      raise error("Cannot pass type parameters to generic #{name}") unless type_identifier.inner_type_ids.empty?
+      return GenericTypeParameter.new(name)
+    end
+
     type_arguments = [] of Type
     type_identifier.inner_type_ids.each do |id|
       type_arguments << parse_type_identifier(id)
     end
-    return NamedType.new(name, type_arguments)
-  end
-
-  private def builtin_type(name : String) : Type
-    Type.new(Name.new(name))
+    
+    NamedType.new(name, type_arguments)
   end
 
   private def is_numeric_type(type : Type) : Bool
@@ -117,7 +67,17 @@ class TypeChecker
     raw == "Int" || raw == "Float"
   end
 
+  private def ensure_var_name(name : String) : String
+    raise error ("Invalid binding/variable name : #{name}, must start lowercase") unless name[0].ascii_lowercase?
+    name
+  end
+
+  private def ensure_type_name(name : String) : String
+    raise error ("Invalid type name : #{name}, must start uppercase") unless name[0].ascii_uppercase?
+    name
+  end
+
   private def error(message : String) : TypeError
-    TypeError.new(message)
+    TypeError.new(message, 0, 0)
   end
 end

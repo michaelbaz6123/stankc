@@ -1,5 +1,5 @@
 abstract class Identifier < Node
-  abstract def name : String
+  abstract def name : String?
 end
 
 
@@ -15,8 +15,8 @@ class VariableIdentifier < Identifier
 end
 
 class TypeIdentifier < Identifier
-  getter name : String
-  getter inner_type_ids : Array(TypeIdentifier)
+  getter name : String 
+  getter inner_type_ids : Array(TypeIdentifier) 
 
   getter source_location : SourceLocation
 

@@ -18,10 +18,10 @@ begin
   pp ast
 
 
-  # TypeChecker.new.check(ast)
-  # puts
-  # puts " ____ After Type Checker ____"
-  # pp ast
+  TypeChecker.new.check(ast)
+  puts
+  puts " ____ After Type Checker ____"
+  pp ast
 rescue parse_error : ParseError
   puts "#{source_path}:#{parse_error.message}"
   parse_error.put_backtrace

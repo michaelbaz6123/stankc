@@ -50,7 +50,7 @@ module ProcedureParser
 
   private def parse_var_reassignment : ExpressionStatement
     variable = parse_variable
-    consume(TokenType::EQ, "expected '=' for variable assignment")
+    consume(TokenType::EQ, "expected '=' for variable reassignment")
     value_expr = parse_expression
     consume(TokenType::SEMICOLON, "expected ';' after assigning value")
     return ExpressionStatement.new(

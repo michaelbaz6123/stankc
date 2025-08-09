@@ -12,8 +12,8 @@ module DeclarationParser
   private def parse_binding : Statement 
     token = consume(TokenType::IDENTIFIER, "expected binding identifier name")
     name = token.lexeme
-    type_identifier = if match?(TokenType::COLON)
-      parse_type_identifier
+    type_identifier = if colon_token = match?(TokenType::COLON)
+      parse_type_identifier(location(colon_token))
     else nil end
     consume(TokenType::EQ, "expected '=' after binding name")
     value_expr = parse_expression
@@ -25,8 +25,8 @@ module DeclarationParser
     token = consume(TokenType::IDENTIFIER, "expected variable identifier name")
     name = token.lexeme
     
-    type_identifier = if match?(TokenType::COLON)
-      parse_type_identifier
+    type_identifier = if colon_token = match?(TokenType::COLON)
+      parse_type_identifier(location(colon_token))
     else nil end
 
     value_expr = if match?(TokenType::EQ)
@@ -44,8 +44,8 @@ module DeclarationParser
     consume(TokenType::FN_APPLY, "expected '$' after function name")
     parameters = parse_parameters
 
-    return_type_identifier = if match?(TokenType::COLON)
-      parse_type_identifier
+    return_type_identifier = if colon_token = match?(TokenType::COLON)
+      parse_type_identifier(location(colon_token))
     else nil end
 
     consume(TokenType::ARROW, "expected => before function declaration body")
@@ -71,8 +71,8 @@ module DeclarationParser
   private def parse_parameter : Parameter
     token = consume(TokenType::IDENTIFIER, "expected parameter identifier name")
     name = token.lexeme
-    consume(TokenType::COLON, "expected ':' followed by type annotation")
-    type_identifier = parse_type_identifier
+    colon_token = consume(TokenType::COLON, "expected ':' followed by type annotation")
+    type_identifier = parse_type_identifier(location(colon_token))
     Parameter.new(name, type_identifier, location(token))
   end
 
@@ -93,7 +93,9 @@ module DeclarationParser
     name = consume(TokenType::IDENTIFIER, "expected type identifier name for type declaration").lexeme
     generics = parse_generics
     return ProductTypeDeclaration.new(name, generics, parse_fields, location(token)) if match?(TokenType::HAS)
-    return UnionTypeDeclaration.new(name, generics, parse_variants, location(token)) if match?(TokenType::IS)
+    if is_token = match?(TokenType::IS)
+      return UnionTypeDeclaration.new(name, generics, parse_variants(location(is_token)), location(token))
+    end
     raise error("expected `has` or `is` after type declaration name", peek)
   end
 
@@ -124,17 +126,17 @@ module DeclarationParser
   private def parse_field : Field
     token = consume(TokenType::IDENTIFIER, "expected field name identifier")
     name = token.lexeme
-    consume(TokenType::COLON, "expected : for field type annotation")
-    type_identifier = parse_type_identifier
+    colon_token = consume(TokenType::COLON, "expected : for field type annotation")
+    type_identifier = parse_type_identifier(location(colon_token))
     return Field.new(name, type_identifier, location(token))
   end
 
-  private def parse_variants : Array(TypeIdentifier)
+  private def parse_variants(location : SourceLocation) : Array(TypeIdentifier)
     variants = [] of TypeIdentifier
     
-    variants << parse_type_identifier
+    variants << parse_type_identifier(location)
     while match?(TokenType::BAR)
-      variants << parse_type_identifier
+      variants << parse_type_identifier(location)
     end
     consume(TokenType::END, "expected `end` to terminate union type declaration")
     return variants

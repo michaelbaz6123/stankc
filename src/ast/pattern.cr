@@ -84,3 +84,12 @@ class VariantPattern < Pattern
   def initialize(@variant_name : String, @field_patterns : Array(NamedFieldPattern), @source_location : SourceLocation)
   end
 end
+
+class TuplePattern < Pattern
+  getter patterns : Array(Pattern)
+
+  getter source_location : SourceLocation
+
+  def initialize(@patterns : Array(Pattern), @source_location : SourceLocation)
+  end
+end

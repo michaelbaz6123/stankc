@@ -29,9 +29,7 @@ end
 # Named type with generic parameters or concrete types
 class NamedType < Type
   getter name : String
-  # For generic type *definition*, this holds generic type parameters
-  # For concrete *instantiations*, this holds concrete types
-  getter type_arguments : Array(Type)
+  property type_arguments : Array(Type)
 
   def initialize(@name : String, @type_arguments : Array(Type) = [] of Type)
   end
@@ -40,7 +38,7 @@ class NamedType < Type
     if type_arguments.empty?
       name
     else
-      "#{name}<#{type_arguments.map(&.to_s).join(", ")}>"
+      "#{name}(#{type_arguments.map(&.to_s).join(", ")})"
     end
   end
 
@@ -72,7 +70,7 @@ class FunctionType < Type
   end
 
   def generic? : Bool
-    param_types.any(&:generic?)
+    param_types.any? { |pt| pt.generic? }
   end
 
   def ==(other : Type) : Bool
