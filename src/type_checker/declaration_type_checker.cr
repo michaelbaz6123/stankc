@@ -7,7 +7,7 @@ module DeclarationTypeChecker
     resolved_type = value_type
     if type_id = maybe_type_id
       annotation_type = parse_type_identifier(type_id)
-      unless annotation_type == value_type
+      unless is_assignable?(value_type, annotation_type)
         raise error("Type mismatch in binding '#{name}': expected #{annotation_type.to_s}, got #{value_type.to_s}")
       end
       resolved_type = annotation_type
@@ -54,7 +54,10 @@ module DeclarationTypeChecker
     check_procedure(declaration.body)
     @env.exit_scope
 
-    result_type = NamedType.new("Result", [] of Type)
+    result_type = UnionType.new("Result", [
+                      ProductType.new("Err", [NamedType.new("String").as(Type)]).as(Type), 
+                      NamedType.new("Ok").as(Type)
+                  ])
     procedure_type = FunctionType.new(parameter_types, result_type)
     declaration.resolved_type = result_type
     @env.declare(declaration.name, procedure_type)
@@ -70,8 +73,10 @@ module DeclarationTypeChecker
     
     parameter_types = fields.values
 
-    constructor_parameters = declaration.generics.map { |name| GenericTypeParameter.new(name).as(Type) }
-    type = NamedType.new(name, constructor_parameters)
+    constructor_parameters = declaration.generics.map do |name| 
+      GenericTypeParameter.new(name).as(Type) 
+    end
+    type = ProductType.new(name, constructor_parameters)
     constructor_type = FunctionType.new(parameter_types, type)
     constructor = ConstructorDefinition.new(name, constructor_type)
 
@@ -80,14 +85,17 @@ module DeclarationTypeChecker
   end
 
   private def check_union_type_declaration(declaration : UnionTypeDeclaration)
-    # TODO
-    # name = ensure_type_name(declaration.name)
-    # variants = declaration.variants.map do | variant_type_id |
-    #   parse_type_identifier(variant_type_id)
-    # end
-    # generics = declaration.generics
-    # definition = UnionTypeDefinition.new(name, variants, generics)
-    # @env.declare_type(name, definition)
+    # TODO still does not resolve when instantiating
+    name = ensure_type_name(declaration.name)
+    variants = declaration.variants.map do | variant_type_id |
+      parse_type_identifier(variant_type_id, declaration.generics)
+    end
+
+    definition = UnionTypeDefinition.new(name, variants)
+    variants.each do |variant_type|
+      variant_type_definition = @env.type_definition(variant_type.name) || raise error("Undefined type in union: #{variant_type.name}")
+    end
+    @env.define_type(name, definition)
   end
 
 end

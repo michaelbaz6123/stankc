@@ -6,3 +6,13 @@ end
 
 
 let my_point = Point(a = Point(a = 1, b = "hi"), b = true);
+
+type Some<T> has
+  value : T
+end
+
+type Maybe<T> is
+  Some(T) | Nil
+end
+
+let x : Maybe(Point(Int, Int)) = Some(value = Point(a = 1, b = 2));

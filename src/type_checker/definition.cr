@@ -1,4 +1,6 @@
-abstract class TypeDefinition
+class TypeDefinition
+  # All types can have parents (for type unions)
+  property : Array(TypeDefinition) = [] of TypeDefinition
 end
 
 class AtomicTypeDefinition < TypeDefinition
@@ -19,9 +21,8 @@ end
 class UnionTypeDefinition < TypeDefinition
   getter name : String
   getter variants : Array(Type)
-  getter constructor : ConstructorDefinition
 
-  def initialize(@name : String, @variants : Hash(String, Type), @constructor : ConstructorDefinition)
+  def initialize(@name : String, @variants : Array(Type))
   end
 end
 

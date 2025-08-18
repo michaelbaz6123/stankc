@@ -27,7 +27,7 @@ module ExpressionTypeChecker
     expr.resolved_type = resolved_type
   end
 
-  # TODO
+  # TODO array hash tuple etc.
   # private def check_array_literal(expr : ArrayLiteral) : Type
 
   # end
@@ -48,6 +48,7 @@ module ExpressionTypeChecker
     rhs_type = check_expression(expression.right)
 
     case expression.operator
+    # TODO add inference for Int to Float if doing something like let x = 1 + 2.0;
     when TokenType::ADD
       if lhs_type == rhs_type && is_numeric_type(lhs_type)
         return lhs_type
@@ -62,24 +63,19 @@ module ExpressionTypeChecker
 
   private def check_call(expression : Call) : Type
     name = expression.callee.name
-    function_type = @env.lookup(name)
-    if ft = function_type
-      raise error("#{name} is a variable, not a function") unless ft.is_a?(FunctionType)
-      ft = ft.as(FunctionType)
-      if (a = expression.arguments.size) != (b = ft.param_types.size)
-        raise error("#{name} expected #{b} argument(s) but received #{a}")
-      end
-      expression.arguments.zip(ft.param_types) do |arg, expected_arg_type|
-        arg_type = check_expression(arg)
-        unless arg_type == expected_arg_type
-          raise error("#{name} expected #{expected_arg_type.to_s} but received #{arg_type.to_s}")
-        end
-      end
-
-      return ft.return_type
-    else
-      raise error("Undefined function: #{name}")
+    function_type = @env.lookup(name) || raise error("Undefined function: #{name}")
+    function_type = function_type.as?(FunctionType) || raise error("#{name} is a variable, not a function")
+    if (a = function_type.param_types.size) != (b = expression.arguments.size)
+      raise error("#{name} expected #{a} argument(s) but received #{b}")
     end
+    expression.arguments.zip(function_type.param_types) do |arg, expected_arg_type|
+      arg_type = check_expression(arg)
+      unless arg_type == expected_arg_type
+        raise error("#{name} expected #{expected_arg_type.to_s} but received #{arg_type.to_s}")
+      end
+    end
+
+    return function_type.return_type
   end
 
   private def check_procedure_call(expression : ProcedureCall) : Type
@@ -91,51 +87,79 @@ module ExpressionTypeChecker
   private def check_constructor(expression : ProcedureCall) : Type
     name = expression.callee.name
     type_definition = @env.type_definition(name) || raise error("Unknown type: #{name}")
-
-
-    type_definition = type_definition.as(ProductTypeDefinition) # TODO will have to handle differently with union typedefs
+    type_definition = type_definition.as(ProductTypeDefinition)
 
     constructor_definition = type_definition.constructor
     generic_subs = {} of GenericTypeParameter => NamedType
     expression.arguments.each do |arg|
       assignment = arg.as?(VarReassignment) || raise error("Expected constructor expression, i.e. MyType(x = 0)")
       arg_name = assignment.variable_identifier.name
+
       field_type = type_definition.fields[arg_name]? || raise error("Undefined field name #{arg_name} in #{name} constructor")
 
       value_type = check_expression(assignment.value)
 
-      # If generic look that its init value resolved type is consistent with other generics in the call
-      # Resolve as we go
-      if field_type.generic? 
-        field_type = field_type.as(GenericTypeParameter)
-        field_type = generic_subs[field_type]? || (generic_subs[field_type] = value_type.as(NamedType))
-      end
-
-      if field_type != value_type
-        raise error("Field #{arg_name} expected to be #{field_type.to_s}, recieved #{value_type.to_s}")
+      # If the field type is generic, bind it to the value type
+      if field_type.generic?
+        generic_param = field_type.as(GenericTypeParameter)
+        if existing = generic_subs[generic_param]?
+          # Ensure consistency with previous arguments
+          raise error("Generic #{generic_param.name} inferred inconsistently") unless existing == value_type
+        else
+          generic_subs[generic_param] = value_type.as(NamedType)
+        end
+      else
+        # Non-generic: check type matches
+        raise error("Field #{arg_name} expected #{field_type.to_s}, got #{value_type.to_s}") unless field_type == value_type
       end
     end
 
     # Finally, apply any substitutions we inferred to the return type (if applicable)
-    return generic_sub(
-      constructor_definition.resolved_type.return_type,
-      generic_subs
-    )
+    return generic_sub(constructor_definition.resolved_type.return_type, generic_subs)
   
   end
 
-  private def generic_sub(type : Type, generic_subs : Hash(GenericTypeParameter, NamedType)) : NamedType
-    if type.generic?
-      case type
-      when GenericTypeParameter
-        type = generic_subs[type]? || raise error("Cannot infer type of #{type}'s generic return type")
-      when NamedType
-        type.type_arguments = type.type_arguments.map do |type_arg|
-          generic_sub(type_arg, generic_subs).as(Type)
-        end
+  # private def generic_sub(type : Type, generic_subs : Hash(GenericTypeParameter, NamedType)) : Type
+  #   return type.as(NamedType) unless type.generic?
+
+  #   case type
+  #   when GenericTypeParameter
+  #     type = generic_subs[type]? || raise error("Cannot infer type of #{type}'s generic return type")
+  #   when ProductType # generic must be somewhere in NamedType.type_arguments
+  #     type.fields = type.fields.map do | field_type |
+  #       generic_sub(field_type, generic_subs).as(Type)
+  #     end
+  #   when UnionType
+  #     type.variants = type.variants.map do | variant_type |
+  #       generic_sub(variant_type, generic_subs).as(Type)
+  #     end
+  #   end
+
+  #   return type
+  # end
+
+  private def generic_sub(type : Type, generic_subs : Hash(GenericTypeParameter, NamedType)) : Type
+    case type
+    when GenericTypeParameter
+      bound = generic_subs[type]
+      raise error("Cannot infer type of #{type}'s generic return type") unless bound
+      return bound
+    when NamedType
+      return type.as(Type)
+    when ProductType
+      new_fields = type.fields.map do |field_type|
+        generic_sub(field_type, generic_subs)
       end
+      return ProductType.new(type.name, new_fields)
+    when UnionType
+      new_variants = type.variants.map do |variant_type|
+        generic_sub(variant_type, generic_subs)
+      end
+      return UnionType.new(type.name, new_variants)
+    else
+      raise error("Unhandled type in generic_sub: #{type.class}")
     end
-    return type.as(NamedType)
   end
+
 
 end
